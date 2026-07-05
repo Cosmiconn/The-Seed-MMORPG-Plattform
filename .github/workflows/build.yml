@@ -1,39 +1,63 @@
-name: Build & Test
+name: build-windows
 
 on:
   push:
-    branches: [main, develop]
+    branches: [main, master, develop]
   pull_request:
-    branches: [main]
+    branches: [main, master]
+
+env:
+  VCPKG_ROOT: ${{ github.workspace }}/vcpkg
+  VCPKG_DEFAULT_TRIPLET: x64-windows
 
 jobs:
-  build-windows:
-    runs-on: windows-latest
-    env:
-      VCPKG_ROOT: ${{ github.workspace }}/vcpkg
+  build:
+    runs-on: windows-2026  # oder windows-latest
+    
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
 
+      # ============================================================
+      # 1. Setup vcpkg (cached for speed)
+      # ============================================================
       - name: Setup vcpkg
         uses: lukka/run-vcpkg@v11
         with:
-          vcpkgGitCommitId: 'dfcb04008a5a9e038a4ae0d1af57909e30d21359'
+          vcpkgGitCommitId: dfcb04008a5a9e038a4ae0d1af57909e30d21359
+          runVcpkgInstall: true  # <-- WICHTIG: führt vcpkg install aus!
 
+      # ============================================================
+      # 2. Configure CMake (vcpkg toolchain wird automatisch gesetzt)
+      # ============================================================
       - name: Configure CMake
-        run: cmake -B build -S . -DCMAKE_BUILD_TYPE=Release
+        run: |
+          cmake -B build -S . `
+            -DCMAKE_BUILD_TYPE=Release `
+            -DCMAKE_TOOLCHAIN_FILE="${{ env.VCPKG_ROOT }}/scripts/buildsystems/vcpkg.cmake"
 
+      # ============================================================
+      # 3. Build
+      # ============================================================
       - name: Build
         run: cmake --build build --config Release --parallel
 
+      # ============================================================
+      # 4. Test
+      # ============================================================
       - name: Test
-        working-directory: build
-        run: ctest -C Release --output-on-failure
+        run: ctest --test-dir build --config Release --output-on-failure
 
+      # ============================================================
+      # 5. Upload Artifacts (optional)
+      # ============================================================
       - name: Upload Artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: theseed-windows
+          name: TheSeed-Windows-Release
           path: |
-            build/Release/TheSeedEditor.exe
-            build/Release/TheSeedServer.exe
-            build/modules/
+            build/Release/*.exe
+            build/Release/*.dll
+            build/modules/Release/*.dll
