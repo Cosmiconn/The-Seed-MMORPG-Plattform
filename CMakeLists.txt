@@ -55,7 +55,7 @@ if(MSVC)
     add_compile_options(/wd4996)
     # FIX: Dynamic runtime to match vcpkg default builds (MD/MDd)
     # vcpkg builds packages with dynamic runtime by default
-    set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreadedDLL$<$<CONFIG:Debug>:DebugDLL>")
+    set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>DLL")
 endif()
 
 if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
@@ -151,7 +151,7 @@ target_link_libraries(TheSeedTests PRIVATE TheSeedCore Catch2::Catch2WithMain)
 if(MSVC)
     # Ensure tests also use dynamic runtime
     set_target_properties(TheSeedTests PROPERTIES
-        MSVC_RUNTIME_LIBRARY "MultiThreadedDLL$<$<CONFIG:Debug>:DebugDLL>"
+        MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>DLL"
     )
 endif()
 include(Catch)
