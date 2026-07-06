@@ -1,0 +1,160 @@
+name: build-windows
+
+on:
+  push:
+    branches: [main, master, develop]
+  pull_request:
+    branches: [main, master]
+
+env:
+  VCPKG_ROOT: ${{ github.workspace }}/vcpkg
+  VCPKG_DEFAULT_TRIPLET: x64-windows
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+      # ============================================================
+      # 1. Checkout with full history for submodules
+      # ============================================================
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          fetch-depth: 0
+
+      # ============================================================
+      # 2. DEBUG: Show repository structure
+      # ============================================================
+      - name: DEBUG - Repository structure
+        shell: pwsh
+        run: |
+          Write-Host "=== Current Directory ==="
+          Get-Location
+          Write-Host "=== Files in Root ==="
+          Get-ChildItem -Force
+          Write-Host "=== vcpkg.json Content ==="
+          if (Test-Path "vcpkg.json") { Get-Content "vcpkg.json" } else { Write-Host "vcpkg.json NOT FOUND!" }
+          Write-Host "=== CMakeLists.txt first 30 lines ==="
+          if (Test-Path "CMakeLists.txt") { Get-Content "CMakeLists.txt" -TotalCount 30 } else { Write-Host "CMakeLists.txt NOT FOUND!" }
+
+      # ============================================================
+      # 3. Setup vcpkg (clone + bootstrap)
+      # ============================================================
+      - name: Clone vcpkg
+        shell: pwsh
+        run: |
+          $vcpkgPath = "$env:VCPKG_ROOT"
+          if (-not (Test-Path $vcpkgPath)) {
+            Write-Host "Cloning vcpkg..."
+            git clone --depth 1 https://github.com/Microsoft/vcpkg.git $vcpkgPath
+          } else {
+            Write-Host "vcpkg already exists"
+          }
+
+      - name: Bootstrap vcpkg
+        shell: pwsh
+        run: |
+          cd "$env:VCPKG_ROOT"
+          if (-not (Test-Path "vcpkg.exe")) {
+            Write-Host "Bootstrapping vcpkg..."
+            .\bootstrap-vcpkg.bat
+          } else {
+            Write-Host "vcpkg.exe already exists"
+          }
+          .\vcpkg.exe --version
+
+      # ============================================================
+      # 4. Cache vcpkg (CRITICAL for speed)
+      # ============================================================
+      - name: Cache vcpkg installed packages
+        uses: actions/cache@v4
+        id: vcpkg-cache
+        with:
+          path: |
+            ${{ env.VCPKG_ROOT }}/installed
+            ${{ env.VCPKG_ROOT }}/packages
+            ${{ env.VCPKG_ROOT }}/downloads
+          key: vcpkg-${{ runner.os }}-${{ hashFiles('vcpkg.json', 'vcpkg-configuration.json') }}
+          restore-keys: |
+            vcpkg-${{ runner.os }}-
+
+      # ============================================================
+      # 5. Install Dependencies (METHOD 1: Explicit Classic Mode)
+      # ============================================================
+      - name: vcpkg install (Classic Mode)
+        shell: pwsh
+        run: |
+          cd "$env:VCPKG_ROOT"
+          Write-Host "Installing packages..."
+          .\vcpkg.exe install spdlog:x64-windows fmt:x64-windows yaml-cpp:x64-windows catch2:x64-windows --recurse
+          if ($LASTEXITCODE -ne 0) {
+            Write-Host "Classic mode failed, trying manifest mode..."
+            # METHOD 2: Manifest Mode fallback
+            cd "$env:GITHUB_WORKSPACE"
+            if (Test-Path "vcpkg.json") {
+              & "$env:VCPKG_ROOT/vcpkg.exe" install --triplet=x64-windows
+            }
+          }
+
+      # ============================================================
+      # 6. Verify installation
+      # ============================================================
+      - name: Verify vcpkg packages
+        shell: pwsh
+        run: |
+          cd "$env:VCPKG_ROOT"
+          Write-Host "=== Installed Packages ==="
+          .\vcpkg.exe list
+          Write-Host "=== Checking spdlog ==="
+          $spdlogPath = "$env:VCPKG_ROOT/installed/x64-windows/share/spdlog"
+          if (Test-Path $spdlogPath) {
+            Write-Host "spdlog config found!"
+            Get-ChildItem $spdlogPath
+          } else {
+            Write-Host "WARNING: spdlog config NOT found!"
+          }
+
+      # ============================================================
+      # 7. Configure CMake with explicit toolchain
+      # ============================================================
+      - name: Configure CMake
+        shell: pwsh
+        run: |
+          $toolchain = "$env:VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake"
+          Write-Host "Toolchain path: $toolchain"
+          if (-not (Test-Path $toolchain)) {
+            throw "vcpkg toolchain NOT FOUND at $toolchain"
+          }
+          cmake -B build -S . `
+            -G "Visual Studio 17 2022" -A x64 `
+            -DCMAKE_BUILD_TYPE=Release `
+            -DCMAKE_TOOLCHAIN_FILE="$toolchain" `
+            -DVCPKG_TARGET_TRIPLET=x64-windows
+
+      # ============================================================
+      # 8. Build
+      # ============================================================
+      - name: Build
+        run: cmake --build build --config Release --parallel
+
+      # ============================================================
+      # 9. Test
+      # ============================================================
+      - name: Test
+        run: ctest --test-dir build --config Release --output-on-failure
+
+      # ============================================================
+      # 10. Upload Artifacts (always, even on failure)
+      # ============================================================
+      - name: Upload Artifacts
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: TheSeed-Windows-Release
+          path: |
+            build/Release/*.exe
+            build/Release/*.dll
+            build/modules/Release/*.dll
+            build/Release/modules/*.dll
