@@ -87,6 +87,8 @@ target_sources(TheSeedCore
         src/core/serialize.cpp
         src/core/jobs.cpp
         src/core/renderer.cpp
+        src/core/game_server.cpp
+        src/core/game_client.cpp
     PUBLIC
         src/core/ecs.hpp
         src/core/net.hpp
@@ -95,6 +97,8 @@ target_sources(TheSeedCore
         src/core/serialize.hpp
         src/core/jobs.hpp
         src/core/renderer.hpp
+        src/core/game_server.hpp
+        src/core/game_client.hpp
 )
 target_include_directories(TheSeedCore PUBLIC
     $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}/src>
@@ -154,6 +158,7 @@ add_executable(TheSeedTests
     tests/test_events.cpp
     tests/test_jobs.cpp
     tests/test_renderer.cpp
+    tests/test_integration.cpp
 )
 # FIX: Link against dynamic CRT to match vcpkg-built Catch2
 # Also add /NODEFAULTLIB to avoid libcmt.lib conflicts if any remain
