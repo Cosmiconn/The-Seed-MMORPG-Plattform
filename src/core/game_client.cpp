@@ -54,7 +54,7 @@ void GameClient::ProcessPacket(std::span<const uint8_t> data) {
 
     // Parse Binary
     try {
-        Serialize::BinaryDeserializer de(std::span(m_lastState));
+        Serialize::BinaryDeserializer de(std::span<const uint8_t>(m_lastState.data(), m_lastState.size()));
         uint32_t count = de.ReadU32();
 
         for (uint32_t i = 0; i < count; ++i) {
