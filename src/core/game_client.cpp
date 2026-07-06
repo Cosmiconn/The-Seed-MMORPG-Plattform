@@ -45,7 +45,7 @@ void GameClient::ProcessPacket(std::span<const uint8_t> data) {
         // Delta-komprimiert: versuche zu dekodieren
         auto decoded = Serialize::ApplyDelta(m_lastState, data);
         if (decoded.empty()) return;
-        data = std::span(decoded);
+        data = std::span<const uint8_t>(decoded.data(), decoded.size());
         m_lastState = std::move(decoded);
     } else {
         // Full state
