@@ -24,7 +24,7 @@ jobs:
           submodules: recursive
 
       # ============================================================
-      # 2. Setup MSVC (Visual Studio 2022 with C++ workload)
+      # 2. Setup MSVC
       # ============================================================
       - name: Setup MSVC
         uses: ilammy/msvc-dev-cmd@v1
@@ -32,16 +32,7 @@ jobs:
           arch: x64
 
       # ============================================================
-      # 3. Verify Visual Studio
-      # ============================================================
-      - name: Verify VS Installation
-        shell: cmd
-        run: |
-          where cl.exe
-          cl.exe
-
-      # ============================================================
-      # 4. Setup vcpkg
+      # 3. Setup vcpkg
       # ============================================================
       - name: Clone vcpkg
         shell: pwsh
@@ -61,7 +52,7 @@ jobs:
           .\vcpkg.exe --version
 
       # ============================================================
-      # 5. Cache vcpkg
+      # 4. Cache vcpkg
       # ============================================================
       - name: Cache vcpkg
         uses: actions/cache@v4
@@ -75,34 +66,26 @@ jobs:
             vcpkg-${{ runner.os }}-
 
       # ============================================================
-      # 6. Install Dependencies (Classic Mode)
+      # 5. Install Dependencies (RUN FROM REPO ROOT, not vcpkg dir!)
       # ============================================================
       - name: vcpkg install
         shell: pwsh
         run: |
-          cd "$env:VCPKG_ROOT"
-          .\vcpkg.exe install spdlog:x64-windows fmt:x64-windows yaml-cpp:x64-windows catch2:x64-windows
+          # WICHTIG: Lauf im REPO-ROOT, nicht im vcpkg-Ordner!
+          # vcpkg.json liegt hier, also Manifest-Modus
+          & "$env:VCPKG_ROOT/vcpkg.exe" install --triplet=x64-windows
 
       # ============================================================
-      # 7. Verify installation
+      # 6. Verify
       # ============================================================
       - name: Verify vcpkg packages
         shell: pwsh
         run: |
           cd "$env:VCPKG_ROOT"
-          Write-Host "=== Installed Packages ==="
           .\vcpkg.exe list
-          Write-Host "=== Checking config files ==="
-          $sharePath = "$env:VCPKG_ROOT/installed/x64-windows/share"
-          if (Test-Path "$sharePath/spdlog") {
-            Write-Host "✓ spdlog config found"
-            Get-ChildItem "$sharePath/spdlog"
-          } else {
-            Write-Host "✗ spdlog config NOT found"
-          }
 
       # ============================================================
-      # 8. Configure CMake (Ninja instead of VS generator)
+      # 7. Configure CMake
       # ============================================================
       - name: Configure CMake
         shell: pwsh
@@ -115,19 +98,19 @@ jobs:
             -DVCPKG_TARGET_TRIPLET=x64-windows
 
       # ============================================================
-      # 9. Build
+      # 8. Build
       # ============================================================
       - name: Build
         run: cmake --build build --config Release --parallel
 
       # ============================================================
-      # 10. Test
+      # 9. Test
       # ============================================================
       - name: Test
         run: ctest --test-dir build --config Release --output-on-failure
 
       # ============================================================
-      # 11. Upload Artifacts
+      # 10. Upload Artifacts
       # ============================================================
       - name: Upload Artifacts
         uses: actions/upload-artifact@v4
