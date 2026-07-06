@@ -71,6 +71,8 @@ endif()
 find_package(spdlog CONFIG REQUIRED)
 find_package(yaml-cpp CONFIG REQUIRED)
 find_package(Catch2 CONFIG REQUIRED)
+find_package(Vulkan REQUIRED)
+find_package(SDL3 CONFIG REQUIRED)
 
 # =============================================================================
 # TheSeed Core Library
@@ -84,6 +86,7 @@ target_sources(TheSeedCore
         src/core/events.cpp
         src/core/serialize.cpp
         src/core/jobs.cpp
+        src/core/renderer.cpp
     PUBLIC
         src/core/ecs.hpp
         src/core/net.hpp
@@ -91,6 +94,7 @@ target_sources(TheSeedCore
         src/core/events.hpp
         src/core/serialize.hpp
         src/core/jobs.hpp
+        src/core/renderer.hpp
 )
 target_include_directories(TheSeedCore PUBLIC
     $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}/src>
@@ -101,6 +105,8 @@ target_include_directories(TheSeedCore PUBLIC
 target_link_libraries(TheSeedCore PUBLIC
     spdlog::spdlog
     yaml-cpp::yaml-cpp
+    Vulkan::Vulkan
+    SDL3::SDL3
 )
 
 target_compile_features(TheSeedCore PUBLIC cxx_std_23)
@@ -147,6 +153,7 @@ add_executable(TheSeedTests
     tests/test_modules.cpp
     tests/test_events.cpp
     tests/test_jobs.cpp
+    tests/test_renderer.cpp
 )
 # FIX: Link against dynamic CRT to match vcpkg-built Catch2
 # Also add /NODEFAULTLIB to avoid libcmt.lib conflicts if any remain
