@@ -107,7 +107,7 @@ jobs:
       # 9. Test
       # ============================================================
       - name: Test
-        run: ctest --test-dir build --config Release --output-on-failure
+  run: ctest --test-dir build -C Release --output-on-failure
 
       # ============================================================
       # 10. Upload Artifacts
