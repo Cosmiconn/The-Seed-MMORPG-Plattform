@@ -55,7 +55,7 @@ if(MSVC)
     add_compile_options(/wd4996)
     # FIX: Dynamic runtime to match vcpkg default builds (MD/MDd)
     # vcpkg builds packages with dynamic runtime by default
-    set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>DLL")
+    set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreadedDLL$<$<CONFIG:Debug>:DebugDLL>")
 endif()
 
 if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
@@ -83,12 +83,14 @@ target_sources(TheSeedCore
         src/core/modules.cpp
         src/core/events.cpp
         src/core/serialize.cpp
+        src/core/jobs.cpp
     PUBLIC
         src/core/ecs.hpp
         src/core/net.hpp
         src/core/modules.hpp
         src/core/events.hpp
         src/core/serialize.hpp
+        src/core/jobs.hpp
 )
 target_include_directories(TheSeedCore PUBLIC
     $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}/src>
@@ -130,9 +132,22 @@ set_target_properties(TheSeedServer PROPERTIES
 add_library(HelloWorldModule SHARED src/modules/hello_world/hello_world.cpp)
 target_link_libraries(HelloWorldModule PRIVATE TheSeedCore)
 set_target_properties(HelloWorldModule PROPERTIES
+    PREFIX ""
     RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/modules"
     LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/modules"
     ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/modules"
+)
+
+# Post-Build: Kopiere Module-DLL/SO in Source-Dir (Editor/Server CWD) und Build-Dir (Tests)
+add_custom_command(TARGET HelloWorldModule POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_SOURCE_DIR}/modules
+    COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_BINARY_DIR}/modules
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+        $<TARGET_FILE:HelloWorldModule>
+        ${CMAKE_SOURCE_DIR}/modules/$<TARGET_FILE_NAME:HelloWorldModule>
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+        $<TARGET_FILE:HelloWorldModule>
+        ${CMAKE_BINARY_DIR}/modules/$<TARGET_FILE_NAME:HelloWorldModule>
 )
 
 # =============================================================================
@@ -144,6 +159,7 @@ add_executable(TheSeedTests
     tests/test_net.cpp
     tests/test_modules.cpp
     tests/test_events.cpp
+    tests/test_jobs.cpp
 )
 # FIX: Link against dynamic CRT to match vcpkg-built Catch2
 # Also add /NODEFAULTLIB to avoid libcmt.lib conflicts if any remain
@@ -151,7 +167,7 @@ target_link_libraries(TheSeedTests PRIVATE TheSeedCore Catch2::Catch2WithMain)
 if(MSVC)
     # Ensure tests also use dynamic runtime
     set_target_properties(TheSeedTests PROPERTIES
-        MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>DLL"
+        MSVC_RUNTIME_LIBRARY "MultiThreadedDLL$<$<CONFIG:Debug>:DebugDLL>"
     )
 endif()
 include(Catch)
