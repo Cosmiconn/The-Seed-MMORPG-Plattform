@@ -81,8 +81,8 @@ jobs:
       - name: Verify vcpkg packages
         shell: pwsh
         run: |
-          cd "$env:VCPKG_ROOT"
-          .\vcpkg.exe list
+          & "$env:VCPKG_ROOT/vcpkg.exe" list
+
 
       # ============================================================
       # 7. Configure CMake
