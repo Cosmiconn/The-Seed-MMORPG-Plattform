@@ -9,7 +9,6 @@ on:
 env:
   VCPKG_ROOT: ${{ github.workspace }}/vcpkg
   VCPKG_DEFAULT_TRIPLET: x64-windows
-  VCPKG_BINARY_SOURCES: "clear;x-gha,readwrite"
 
 jobs:
   build:
@@ -25,15 +24,8 @@ jobs:
           submodules: recursive
 
       # ============================================================
-      # 2. Setup vcpkg + Cache (GitHub Actions Cache)
+      # 2. Setup vcpkg (clone + bootstrap)
       # ============================================================
-      - name: Export GitHub Actions cache environment
-        uses: actions/github-script@v7
-        with:
-          script: |
-            core.exportVariable('ACTIONS_CACHE_URL', process.env.ACTIONS_CACHE_URL || '');
-            core.exportVariable('ACTIONS_RUNTIME_TOKEN', process.env.ACTIONS_RUNTIME_TOKEN || '');
-
       - name: Clone vcpkg
         run: |
           if (-not (Test-Path "$env:VCPKG_ROOT")) {
@@ -46,35 +38,35 @@ jobs:
           if (-not (Test-Path "vcpkg.exe")) {
             .\bootstrap-vcpkg.bat
           }
+          .\vcpkg.exe --version
 
       # ============================================================
       # 3. Cache vcpkg installed packages
       # ============================================================
-      - name: Cache vcpkg packages
+      - name: Cache vcpkg
         uses: actions/cache@v4
         id: vcpkg-cache
         with:
           path: |
             ${{ env.VCPKG_ROOT }}/installed
-            ${{ github.workspace }}/vcpkg_installed
+            ${{ env.VCPKG_ROOT }}/packages
           key: vcpkg-${{ runner.os }}-${{ hashFiles('vcpkg.json', 'vcpkg-configuration.json') }}
           restore-keys: |
             vcpkg-${{ runner.os }}-
 
       # ============================================================
-      # 4. Install Dependencies (spdlog, fmt, yaml-cpp, catch2)
+      # 4. Install Dependencies (Classic Mode — explizite Pakete)
       # ============================================================
-      - name: vcpkg install
+      - name: vcpkg install dependencies
         run: |
           cd "$env:VCPKG_ROOT"
-          .\vcpkg.exe install --triplet=x64-windows `
-            spdlog fmt yaml-cpp catch2
+          .\vcpkg.exe install spdlog:x64-windows fmt:x64-windows yaml-cpp:x64-windows catch2:x64-windows
         shell: pwsh
 
       # ============================================================
-      # 5. Verify vcpkg packages
+      # 5. Verify installed packages
       # ============================================================
-      - name: Verify installed packages
+      - name: Verify vcpkg packages
         run: |
           cd "$env:VCPKG_ROOT"
           .\vcpkg.exe list
