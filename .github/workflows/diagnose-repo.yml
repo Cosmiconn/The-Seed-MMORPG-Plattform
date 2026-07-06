@@ -1,0 +1,24 @@
+name: diagnose-repo
+
+on:
+  workflow_dispatch:
+
+jobs:
+  diagnose:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Full Diagnostic
+        shell: pwsh
+        run: |
+          Write-Host "=== WORKSPACE ==="
+          Get-Location
+          Write-Host "=== ALL FILES (recursive, top 50) ==="
+          Get-ChildItem -Recurse -Force | Select-Object -First 50 FullName
+          Write-Host "=== VCPKG FILES ==="
+          Get-ChildItem -Filter "vcpkg*" -Force
+          Write-Host "=== CMAKE FILES ==="
+          Get-ChildItem -Filter "CMake*" -Force
+          Write-Host "=== .github/workflows ==="
+          if (Test-Path ".github/workflows") { Get-ChildItem ".github/workflows" }
