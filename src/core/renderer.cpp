@@ -122,31 +122,25 @@ bool VulkanRenderer::CreateInstance() {
     appInfo.engineVersion = VK_MAKE_VERSION(0, 1, 0);
     appInfo.apiVersion = VK_API_VERSION_1_3;
 
-    const char* extensions[] = {
-        VK_KHR_SURFACE_EXTENSION_NAME,
-    #if defined(VK_USE_PLATFORM_WIN32_KHR)
-        VK_KHR_WIN32_SURFACE_EXTENSION_NAME,
-    #elif defined(VK_USE_PLATFORM_XLIB_KHR)
-        VK_KHR_XLIB_SURFACE_EXTENSION_NAME,
-    #elif defined(VK_USE_PLATFORM_WAYLAND_KHR)
-        VK_KHR_WAYLAND_SURFACE_EXTENSION_NAME,
-    #elif defined(VK_USE_PLATFORM_XCB_KHR)
-        VK_KHR_XCB_SURFACE_EXTENSION_NAME,
-    #elif defined(VK_USE_PLATFORM_MACOS_MVK)
-        VK_MVK_MACOS_SURFACE_EXTENSION_NAME,
-    #endif
-    };
+    // SDL3 liefert Vulkan-Extensions automatisch
+    // Wir nutzen nur die minimalen Extensions
+    std::vector<const char*> extensions;
+    extensions.push_back(VK_KHR_SURFACE_EXTENSION_NAME);
 
-    uint32_t extCount;
-    SDL_Vulkan_GetInstanceExtensions(m_window, &extCount, nullptr);
-    std::vector<const char*> sdlExts(extCount);
-    SDL_Vulkan_GetInstanceExtensions(m_window, &extCount, sdlExts.data());
+    #if defined(_WIN32)
+        extensions.push_back("VK_KHR_win32_surface");
+    #elif defined(__linux__)
+        extensions.push_back("VK_KHR_xlib_surface");
+        extensions.push_back("VK_KHR_wayland_surface");
+    #elif defined(__APPLE__)
+        extensions.push_back("VK_EXT_metal_surface");
+    #endif
 
     VkInstanceCreateInfo createInfo{};
     createInfo.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
     createInfo.pApplicationInfo = &appInfo;
-    createInfo.enabledExtensionCount = static_cast<uint32_t>(sdlExts.size());
-    createInfo.ppEnabledExtensionNames = sdlExts.data();
+    createInfo.enabledExtensionCount = static_cast<uint32_t>(extensions.size());
+    createInfo.ppEnabledExtensionNames = extensions.data();
 
     #ifdef __APPLE__
         createInfo.flags |= VK_INSTANCE_CREATE_ENUMERATE_PORTABILITY_BIT_KHR;
