@@ -106,7 +106,13 @@ bool MaterialLibrary::RemoveMaterial(const std::string& name) {
     std::lock_guard<std::mutex> lock(m_mutex);
     auto it = m_nameToId.find(name);
     if (it == m_nameToId.end()) return false;
-    return RemoveMaterial(it->second);
+    uint32_t id = it->second;
+    auto mat_it = m_materials.find(id);
+    if (mat_it == m_materials.end()) return false;
+    m_materials.erase(mat_it);
+    m_nameToId.erase(it);
+    spdlog::debug("MaterialLibrary: Removed '{}' (ID={})", name, id);
+    return true;
 }
 
 void MaterialLibrary::SetAlbedo(uint32_t id, float r, float g, float b) {
@@ -205,13 +211,36 @@ bool MaterialLibrary::ReloadMaterial(const std::string& name, MaterialConfigLoad
     std::lock_guard<std::mutex> lock(m_mutex);
     auto it = m_nameToId.find(name);
     if (it == m_nameToId.end()) return false;
-    return ReloadMaterial(it->second, loader);
+    uint32_t id = it->second;
+    auto mat_it = m_materials.find(id);
+    if (mat_it == m_materials.end() || mat_it->second->configPath.empty()) return false;
+    auto config = loader.LoadFromYAML(mat_it->second->configPath);
+    if (!config.has_value()) { spdlog::error("MaterialLibrary: Failed to reload {}: {}", id, config.error()); return false; }
+    auto& mat = mat_it->second;
+    mat->name = config->name; mat->pbr = config->pbr;
+    mat->transparent = config->transparent; mat->doubleSided = config->doubleSided;
+    mat->unlit = config->unlit; mat->wireframe = config->wireframe;
+    mat->UpdateGPUData(); mat->dirty = true;
+    spdlog::info("MaterialLibrary: Reloaded '{}' (ID={})", mat->name, id);
+    return true;
 }
 
 size_t MaterialLibrary::ReloadAll(MaterialConfigLoader& loader) {
     std::lock_guard<std::mutex> lock(m_mutex);
     size_t reloaded = 0;
-    for (auto& [id, mat] : m_materials) { if (!mat->configPath.empty() && ReloadMaterial(id, loader)) reloaded++; }
+    for (auto& [id, mat] : m_materials) {
+        if (!mat->configPath.empty()) {
+            auto config = loader.LoadFromYAML(mat->configPath);
+            if (config.has_value()) {
+                mat->name = config->name; mat->pbr = config->pbr;
+                mat->transparent = config->transparent; mat->doubleSided = config->doubleSided;
+                mat->unlit = config->unlit; mat->wireframe = config->wireframe;
+                mat->UpdateGPUData(); mat->dirty = true;
+                reloaded++;
+                spdlog::info("MaterialLibrary: Reloaded '{}' (ID={})", mat->name, id);
+            }
+        }
+    }
     return reloaded;
 }
 
@@ -256,7 +285,7 @@ void MaterialLibrary::ClearDirtyFlags() {
 }
 
 Material MaterialLibrary::RedPlastic() {
-    Material m; m.pbr.albedo = {0.85f, 0.1f, 0.1f}; m.pbr.metallic = 0.0f; m.pbr.roughness = 0.3f; m.pbr.ao = 1.0f; return m;
+    Material m; m.pbr.albedo = {1.0f, 0.0f, 0.0f}; m.pbr.metallic = 0.0f; m.pbr.roughness = 0.3f; m.pbr.ao = 1.0f; return m;
 }
 
 Material MaterialLibrary::GreenMetal() {
