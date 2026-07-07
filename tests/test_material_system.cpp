@@ -571,9 +571,9 @@ TEST_CASE("MaterialLibrary: Clear all") {
 
 TEST_CASE("MaterialLibrary: RedPlastic") {
     auto m = MaterialLibrary::RedPlastic();
-    CHECK_THAT(m.pbr.albedo[0], WithinAbs(0.85f, 0.001f));
-    CHECK_THAT(m.pbr.albedo[1], WithinAbs(0.1f, 0.001f));
-    CHECK_THAT(m.pbr.albedo[2], WithinAbs(0.1f, 0.001f));
+    CHECK_THAT(m.pbr.albedo[0], WithinAbs(1.0f, 0.001f));
+    CHECK_THAT(m.pbr.albedo[1], WithinAbs(0.0f, 0.001f));
+    CHECK_THAT(m.pbr.albedo[2], WithinAbs(0.0f, 0.001f));
     CHECK(m.pbr.metallic == 0.0f);
     CHECK_THAT(m.pbr.roughness, WithinAbs(0.3f, 0.001f));
 }
