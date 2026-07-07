@@ -1,0 +1,15 @@
+material:
+  name: "CustomShader"
+  pbr:
+    albedo: [0.5, 0.5, 0.5]
+    metallic: 0.0
+    roughness: 0.5
+    ao: 1.0
+  shaders:
+    vertex: "shaders/custom.vert.spv"
+    fragment: "shaders/custom.frag.spv"
+  flags:
+    transparent: false
+    double_sided: true
+    unlit: false
+    wireframe: false

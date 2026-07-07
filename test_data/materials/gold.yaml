@@ -1,0 +1,18 @@
+material:
+  name: "Gold"
+  pbr:
+    albedo: [1.0, 0.78, 0.34]
+    metallic: 1.0
+    roughness: 0.15
+    ao: 1.0
+    emissive: [0.0, 0.0, 0.0]
+    emissive_strength: 0.0
+  textures:
+    albedo: "textures/gold_albedo.png"
+    metallic: "textures/gold_metallic.png"
+    roughness: "textures/gold_roughness.png"
+  flags:
+    transparent: false
+    double_sided: false
+    unlit: false
+    wireframe: false

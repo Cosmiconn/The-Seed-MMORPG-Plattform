@@ -1,0 +1,14 @@
+material:
+  name: "Glass"
+  pbr:
+    albedo: [0.95, 0.95, 0.95]
+    metallic: 0.0
+    roughness: 0.05
+    ao: 1.0
+    emissive: [0.0, 0.0, 0.0]
+    emissive_strength: 0.0
+  flags:
+    transparent: true
+    double_sided: false
+    unlit: false
+    wireframe: false

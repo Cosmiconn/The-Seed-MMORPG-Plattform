@@ -1,0 +1,19 @@
+material:
+  name: "RustyMetal"
+  pbr:
+    albedo: [0.72, 0.45, 0.20]
+    metallic: 0.95
+    roughness: 0.65
+    ao: 1.0
+    emissive: [0.0, 0.0, 0.0]
+    emissive_strength: 0.0
+  textures:
+    albedo: "textures/rusty_albedo.png"
+    normal: "textures/rusty_normal.png"
+    metallic: "textures/rusty_metallic.png"
+    roughness: "textures/rusty_roughness.png"
+  flags:
+    transparent: false
+    double_sided: false
+    unlit: false
+    wireframe: false
