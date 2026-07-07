@@ -24,6 +24,7 @@ void ShaderManager::Shutdown() {
 
 VkShaderModule ShaderManager::CreateShaderModule(std::span<const uint32_t> code) {
     if (code.empty()) { spdlog::error("ShaderManager: Empty SPIR-V code"); return VK_NULL_HANDLE; }
+    if (m_device == VK_NULL_HANDLE) { spdlog::error("ShaderManager: Device not initialized"); return VK_NULL_HANDLE; }
     VkShaderModuleCreateInfo createInfo{};
     createInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
     createInfo.codeSize = code.size() * sizeof(uint32_t);
@@ -52,6 +53,7 @@ bool ShaderManager::LoadSPIRVFile(const std::filesystem::path& path, std::vector
 
 VkShaderModule ShaderManager::LoadSPIRV(const std::filesystem::path& path, VkShaderStageFlagBits stage, const std::string& name) {
     std::lock_guard<std::mutex> lock(m_mutex);
+    if (m_device == VK_NULL_HANDLE) { spdlog::error("ShaderManager: Device not initialized"); return VK_NULL_HANDLE; }
     std::string shaderName = name.empty() ? path.stem().string() : name;
     auto it = m_shaders.find(shaderName);
     if (it != m_shaders.end()) { spdlog::debug("ShaderManager: '{}' already loaded", shaderName); return it->second.module; }
@@ -69,6 +71,7 @@ VkShaderModule ShaderManager::LoadSPIRV(const std::filesystem::path& path, VkSha
 
 VkShaderModule ShaderManager::LoadEmbedded(std::span<const uint32_t> spirv, VkShaderStageFlagBits stage, const std::string& name) {
     std::lock_guard<std::mutex> lock(m_mutex);
+    if (m_device == VK_NULL_HANDLE) { spdlog::error("ShaderManager: Device not initialized"); return VK_NULL_HANDLE; }
     if (name.empty()) { spdlog::error("ShaderManager: Embedded shader requires a name"); return VK_NULL_HANDLE; }
     auto it = m_shaders.find(name);
     if (it != m_shaders.end()) { spdlog::debug("ShaderManager: Embedded '{}' already loaded", name); return it->second.module; }
