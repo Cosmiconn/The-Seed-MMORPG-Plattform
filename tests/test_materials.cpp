@@ -5,7 +5,7 @@ using namespace TheSeed::Render;
 
 TEST_CASE("Material: Library Register/Get", "[material]") {
     MaterialLibrary lib;
-    auto mat = Materials::RedPlastic();
+    auto mat = MaterialLibrary::RedPlastic();
     uint32_t id = lib.RegisterMaterial("red_plastic", mat);
 
     REQUIRE(id != 0);
@@ -13,50 +13,51 @@ TEST_CASE("Material: Library Register/Get", "[material]") {
 
     auto* retrieved = lib.GetMaterial(id);
     REQUIRE(retrieved != nullptr);
-    REQUIRE(retrieved->albedoR == 1.0f);
-    REQUIRE(retrieved->metallic == 0.0f);
-    REQUIRE(retrieved->roughness == 0.3f);
+    REQUIRE(retrieved->pbr.albedoR == 1.0f);
+    REQUIRE(retrieved->pbr.metallic == 0.0f);
+    REQUIRE(retrieved->pbr.roughness == 0.3f);
 }
 
 TEST_CASE("Material: Library GetByName", "[material]") {
     MaterialLibrary lib;
-    lib.RegisterMaterial("gold", Materials::Gold());
+    lib.RegisterMaterial("gold", MaterialLibrary::Gold());
 
     auto* gold = lib.GetMaterial("gold");
     REQUIRE(gold != nullptr);
-    REQUIRE(gold->metallic == 1.0f);
-    REQUIRE(gold->roughness == 0.15f);
+    REQUIRE(gold->pbr.metallic == 1.0f);
+    REQUIRE(gold->pbr.roughness == 0.15f);
 }
 
 TEST_CASE("Material: Predefined Materials", "[material]") {
-    auto red = Materials::RedPlastic();
-    REQUIRE(red.albedoR == 1.0f);
-    REQUIRE(red.metallic == 0.0f);
+    auto red = MaterialLibrary::RedPlastic();
+    REQUIRE(red.pbr.albedoR == 1.0f);
+    REQUIRE(red.pbr.metallic == 0.0f);
 
-    auto gold = Materials::Gold();
-    REQUIRE(gold.albedoR == 1.0f);
-    REQUIRE(gold.albedoG == 0.78f);
-    REQUIRE(gold.metallic == 1.0f);
+    auto gold = MaterialLibrary::Gold();
+    REQUIRE(gold.pbr.albedoR == 1.0f);
+    REQUIRE(gold.pbr.albedoG == 0.78f);
+    REQUIRE(gold.pbr.metallic == 1.0f);
 
-    auto silver = Materials::Silver();
-    REQUIRE(silver.metallic == 1.0f);
-    REQUIRE(silver.roughness == 0.1f);
+    auto silver = MaterialLibrary::Silver();
+    REQUIRE(silver.pbr.metallic == 1.0f);
+    REQUIRE(silver.pbr.roughness == 0.1f);
 }
 
 TEST_CASE("Material: Update", "[material]") {
     MaterialLibrary lib;
-    uint32_t id = lib.RegisterMaterial("test", Materials::RedPlastic());
+    uint32_t id = lib.RegisterMaterial("test", MaterialLibrary::RedPlastic());
 
-    Material updated = Materials::Gold();
-    lib.UpdateMaterial(id, updated);
+    Material updated = MaterialLibrary::Gold();
+    lib.SetMetallic(id, updated.pbr.metallic);
+    lib.SetRoughness(id, updated.pbr.roughness);
 
     auto* mat = lib.GetMaterial(id);
-    REQUIRE(mat->metallic == 1.0f);
+    REQUIRE(mat->pbr.metallic == 1.0f);
 }
 
 TEST_CASE("Material: Remove", "[material]") {
     MaterialLibrary lib;
-    uint32_t id = lib.RegisterMaterial("remove_me", Materials::BlueRubber());
+    uint32_t id = lib.RegisterMaterial("remove_me", MaterialLibrary::BlueRubber());
     REQUIRE(lib.Count() == 1);
 
     lib.RemoveMaterial(id);
