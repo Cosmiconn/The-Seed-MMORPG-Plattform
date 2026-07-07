@@ -13,7 +13,7 @@ TEST_CASE("Material: Library Register/Get", "[material]") {
 
     auto* retrieved = lib.GetMaterial(id);
     REQUIRE(retrieved != nullptr);
-    REQUIRE(retrieved->pbr.albedoR == 1.0f);
+    REQUIRE(retrieved->pbr.albedo[0] == 1.0f);
     REQUIRE(retrieved->pbr.metallic == 0.0f);
     REQUIRE(retrieved->pbr.roughness == 0.3f);
 }
@@ -30,12 +30,12 @@ TEST_CASE("Material: Library GetByName", "[material]") {
 
 TEST_CASE("Material: Predefined Materials", "[material]") {
     auto red = MaterialLibrary::RedPlastic();
-    REQUIRE(red.pbr.albedoR == 1.0f);
+    REQUIRE(red.pbr.albedo[0] == 1.0f);
     REQUIRE(red.pbr.metallic == 0.0f);
 
     auto gold = MaterialLibrary::Gold();
-    REQUIRE(gold.pbr.albedoR == 1.0f);
-    REQUIRE(gold.pbr.albedoG == 0.78f);
+    REQUIRE(gold.pbr.albedo[0] == 1.0f);
+    REQUIRE(gold.pbr.albedo[1] == 0.78f);
     REQUIRE(gold.pbr.metallic == 1.0f);
 
     auto silver = MaterialLibrary::Silver();
