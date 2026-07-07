@@ -94,14 +94,14 @@ material:
     auto result = loader.LoadFromYAML(path);
     REQUIRE(result.has_value());
     CHECK(result->name == "RustyMetal");
-    CHECK(result->pbr.albedo[0] == Catch::Approx(0.72f));
-    CHECK(result->pbr.albedo[1] == Catch::Approx(0.45f));
-    CHECK(result->pbr.albedo[2] == Catch::Approx(0.20f));
-    CHECK(result->pbr.metallic == Catch::Approx(0.95f));
-    CHECK(result->pbr.roughness == Catch::Approx(0.65f));
-    CHECK(result->pbr.ao == Catch::Approx(1.0f));
-    CHECK(result->pbr.emissive[0] == Catch::Approx(0.1f));
-    CHECK(result->pbr.emissiveStrength == Catch::Approx(0.5f));
+    CHECK_THAT(result->pbr.albedo[0], WithinAbs(0.72f, 0.001f));
+    CHECK_THAT(result->pbr.albedo[1], WithinAbs(0.45f, 0.001f));
+    CHECK_THAT(result->pbr.albedo[2], WithinAbs(0.20f, 0.001f));
+    CHECK_THAT(result->pbr.metallic, WithinAbs(0.95f, 0.001f));
+    CHECK_THAT(result->pbr.roughness, WithinAbs(0.65f, 0.001f));
+    CHECK_THAT(result->pbr.ao, WithinAbs(1.0f, 0.001f));
+    CHECK_THAT(result->pbr.emissive[0], WithinAbs(0.1f, 0.001f));
+    CHECK_THAT(result->pbr.emissiveStrength, WithinAbs(0.5f, 0.001f));
     CHECK(result->albedoMapPath == "textures/rusty_albedo.png");
     CHECK(result->normalMapPath == "textures/rusty_normal.png");
     CHECK(result->transparent == false);
@@ -176,8 +176,8 @@ TEST_CASE("MaterialConfigLoader: Load JSON") {
     auto result = loader.LoadFromJSON(path);
     REQUIRE(result.has_value());
     CHECK(result->name == "JSONMaterial");
-    CHECK(result->pbr.metallic == Catch::Approx(0.25f));
-    CHECK(result->pbr.roughness == Catch::Approx(0.75f));
+    CHECK_THAT(result->pbr.metallic, WithinAbs(0.25f, 0.001f));
+    CHECK_THAT(result->pbr.roughness, WithinAbs(0.75f, 0.001f));
     CHECK(result->transparent == true);
     std::filesystem::remove(path);
 }
@@ -299,14 +299,14 @@ TEST_CASE("Material: UpdateGPUData") {
     mat.albedoMap = 5; mat.normalMap = 6;
     mat.transparent = true; mat.doubleSided = true;
     mat.UpdateGPUData();
-    CHECK(mat.gpuData.albedoR == Catch::Approx(0.5f));
-    CHECK(mat.gpuData.albedoG == Catch::Approx(0.6f));
-    CHECK(mat.gpuData.albedoB == Catch::Approx(0.7f));
-    CHECK(mat.gpuData.metallic == Catch::Approx(0.8f));
-    CHECK(mat.gpuData.roughness == Catch::Approx(0.3f));
-    CHECK(mat.gpuData.ao == Catch::Approx(0.9f));
-    CHECK(mat.gpuData.emissiveR == Catch::Approx(0.1f));
-    CHECK(mat.gpuData.emissiveStrength == Catch::Approx(1.5f));
+    CHECK_THAT(mat.gpuData.albedoR, WithinAbs(0.5f, 0.001f));
+    CHECK_THAT(mat.gpuData.albedoG, WithinAbs(0.6f, 0.001f));
+    CHECK_THAT(mat.gpuData.albedoB, WithinAbs(0.7f, 0.001f));
+    CHECK_THAT(mat.gpuData.metallic, WithinAbs(0.8f, 0.001f));
+    CHECK_THAT(mat.gpuData.roughness, WithinAbs(0.3f, 0.001f));
+    CHECK_THAT(mat.gpuData.ao, WithinAbs(0.9f, 0.001f));
+    CHECK_THAT(mat.gpuData.emissiveR, WithinAbs(0.1f, 0.001f));
+    CHECK_THAT(mat.gpuData.emissiveStrength, WithinAbs(1.5f, 0.001f));
     CHECK(mat.gpuData.albedoMap == 5);
     CHECK(mat.gpuData.normalMap == 6);
     CHECK(mat.gpuData.flags == 0x03);
@@ -330,7 +330,7 @@ TEST_CASE("MaterialLibrary: Register from config") {
     auto* mat = lib.GetMaterial(id);
     REQUIRE(mat != nullptr);
     CHECK(mat->name == "TestMat");
-    CHECK(mat->pbr.metallic == Catch::Approx(0.5f));
+    CHECK_THAT(mat->pbr.metallic, WithinAbs(0.5f, 0.001f));
     CHECK(mat->dirty == true);
     CHECK(mat->gpuDataDirty == false);
 }
@@ -403,9 +403,9 @@ TEST_CASE("MaterialLibrary: SetAlbedo") {
     lib.SetAlbedo(id, 0.1f, 0.2f, 0.3f);
     auto* mat = lib.GetMaterial(id);
     REQUIRE(mat != nullptr);
-    CHECK(mat->pbr.albedo[0] == Catch::Approx(0.1f));
-    CHECK(mat->pbr.albedo[1] == Catch::Approx(0.2f));
-    CHECK(mat->pbr.albedo[2] == Catch::Approx(0.3f));
+    CHECK_THAT(mat->pbr.albedo[0], WithinAbs(0.1f, 0.001f));
+    CHECK_THAT(mat->pbr.albedo[1], WithinAbs(0.2f, 0.001f));
+    CHECK_THAT(mat->pbr.albedo[2], WithinAbs(0.3f, 0.001f));
     CHECK(mat->dirty == true);
 }
 
@@ -444,10 +444,10 @@ TEST_CASE("MaterialLibrary: SetEmissive") {
     uint32_t id = lib.RegisterMaterial(config);
     lib.SetEmissive(id, 1.0f, 0.5f, 0.0f, 2.0f);
     auto* mat = lib.GetMaterial(id);
-    CHECK(mat->pbr.emissive[0] == Catch::Approx(1.0f));
-    CHECK(mat->pbr.emissive[1] == Catch::Approx(0.5f));
-    CHECK(mat->pbr.emissive[2] == Catch::Approx(0.0f));
-    CHECK(mat->pbr.emissiveStrength == Catch::Approx(2.0f));
+    CHECK_THAT(mat->pbr.emissive[0], WithinAbs(1.0f, 0.001f));
+    CHECK_THAT(mat->pbr.emissive[1], WithinAbs(0.5f, 0.001f));
+    CHECK_THAT(mat->pbr.emissive[2], WithinAbs(0.0f, 0.001f));
+    CHECK_THAT(mat->pbr.emissiveStrength, WithinAbs(2.0f, 0.001f));
 }
 
 TEST_CASE("MaterialLibrary: SetEmissive negative strength clamped") {
@@ -571,55 +571,55 @@ TEST_CASE("MaterialLibrary: Clear all") {
 
 TEST_CASE("MaterialLibrary: RedPlastic") {
     auto m = MaterialLibrary::RedPlastic();
-    CHECK(m.pbr.albedo[0] == Catch::Approx(0.85f));
-    CHECK(m.pbr.albedo[1] == Catch::Approx(0.1f));
-    CHECK(m.pbr.albedo[2] == Catch::Approx(0.1f));
+    CHECK_THAT(m.pbr.albedo[0], WithinAbs(0.85f, 0.001f));
+    CHECK_THAT(m.pbr.albedo[1], WithinAbs(0.1f, 0.001f));
+    CHECK_THAT(m.pbr.albedo[2], WithinAbs(0.1f, 0.001f));
     CHECK(m.pbr.metallic == 0.0f);
-    CHECK(m.pbr.roughness == Catch::Approx(0.3f));
+    CHECK_THAT(m.pbr.roughness, WithinAbs(0.3f, 0.001f));
 }
 
 TEST_CASE("MaterialLibrary: GreenMetal") {
     auto m = MaterialLibrary::GreenMetal();
-    CHECK(m.pbr.albedo[1] == Catch::Approx(0.7f));
-    CHECK(m.pbr.metallic == Catch::Approx(0.9f));
+    CHECK_THAT(m.pbr.albedo[1], WithinAbs(0.7f, 0.001f));
+    CHECK_THAT(m.pbr.metallic, WithinAbs(0.9f, 0.001f));
 }
 
 TEST_CASE("MaterialLibrary: Gold") {
     auto m = MaterialLibrary::Gold();
-    CHECK(m.pbr.albedo[0] == Catch::Approx(1.0f));
+    CHECK_THAT(m.pbr.albedo[0], WithinAbs(1.0f, 0.001f));
     CHECK(m.pbr.metallic == 1.0f);
-    CHECK(m.pbr.roughness == Catch::Approx(0.15f));
+    CHECK_THAT(m.pbr.roughness, WithinAbs(0.15f, 0.001f));
 }
 
 TEST_CASE("MaterialLibrary: Silver") {
     auto m = MaterialLibrary::Silver();
-    CHECK(m.pbr.albedo[0] == Catch::Approx(0.97f));
+    CHECK_THAT(m.pbr.albedo[0], WithinAbs(0.97f, 0.001f));
     CHECK(m.pbr.metallic == 1.0f);
 }
 
 TEST_CASE("MaterialLibrary: RustyMetal") {
     auto m = MaterialLibrary::RustyMetal();
-    CHECK(m.pbr.albedo[0] == Catch::Approx(0.72f));
-    CHECK(m.pbr.roughness == Catch::Approx(0.65f));
+    CHECK_THAT(m.pbr.albedo[0], WithinAbs(0.72f, 0.001f));
+    CHECK_THAT(m.pbr.roughness, WithinAbs(0.65f, 0.001f));
 }
 
 TEST_CASE("MaterialLibrary: EmissiveRed") {
     auto m = MaterialLibrary::EmissiveRed();
-    CHECK(m.pbr.emissive[0] == Catch::Approx(1.0f));
-    CHECK(m.pbr.emissiveStrength == Catch::Approx(2.0f));
+    CHECK_THAT(m.pbr.emissive[0], WithinAbs(1.0f, 0.001f));
+    CHECK_THAT(m.pbr.emissiveStrength, WithinAbs(2.0f, 0.001f));
 }
 
 TEST_CASE("MaterialLibrary: Glass") {
     auto m = MaterialLibrary::Glass();
-    CHECK(m.pbr.roughness == Catch::Approx(0.05f));
+    CHECK_THAT(m.pbr.roughness, WithinAbs(0.05f, 0.001f));
     CHECK(m.transparent == true);
 }
 
 TEST_CASE("MaterialLibrary: BlueRubber") {
     auto m = MaterialLibrary::BlueRubber();
-    CHECK(m.pbr.albedo[2] == Catch::Approx(0.85f));
+    CHECK_THAT(m.pbr.albedo[2], WithinAbs(0.85f, 0.001f));
     CHECK(m.pbr.metallic == 0.0f);
-    CHECK(m.pbr.roughness == Catch::Approx(0.9f));
+    CHECK_THAT(m.pbr.roughness, WithinAbs(0.9f, 0.001f));
 }
 
 TEST_CASE("MaterialLibrary: LoadFromConfig success") {
@@ -636,7 +636,7 @@ material:
     auto* mat = lib.GetMaterial(id);
     REQUIRE(mat != nullptr);
     CHECK(mat->name == "ConfigLoaded");
-    CHECK(mat->pbr.metallic == Catch::Approx(0.75f));
+    CHECK_THAT(mat->pbr.metallic, WithinAbs(0.75f, 0.001f));
     std::filesystem::remove(path);
 }
 
@@ -668,7 +668,7 @@ material:
     }
     REQUIRE(lib.ReloadMaterial(id, loader));
     auto* mat = lib.GetMaterial(id);
-    CHECK(mat->pbr.metallic == Catch::Approx(0.9f));
+    CHECK_THAT(mat->pbr.metallic, WithinAbs(0.9f, 0.001f));
     std::filesystem::remove(path);
 }
 
@@ -802,11 +802,11 @@ material:
     auto* mat = lib.GetMaterial(id);
     REQUIRE(mat != nullptr);
     CHECK(mat->name == "IntegrationMat");
-    CHECK(mat->pbr.albedo[0] == Catch::Approx(0.2f));
+    CHECK_THAT(mat->pbr.albedo[0], WithinAbs(0.2f, 0.001f));
     CHECK(mat->doubleSided == true);
     CHECK(mat->dirty == true);
     lib.SetMetallic(id, 0.8f);
-    CHECK(mat->pbr.metallic == Catch::Approx(0.8f));
+    CHECK_THAT(mat->pbr.metallic, WithinAbs(0.8f, 0.001f));
     lib.ClearDirtyFlags();
     CHECK_FALSE(mat->dirty);
     std::filesystem::remove(path);
@@ -825,8 +825,8 @@ TEST_CASE("Integration: Multiple materials") {
     CHECK(lib.HasMaterial(id2));
     CHECK(lib.HasMaterial(id3));
     CHECK(lib.GetMaterial("Gold")->pbr.metallic == 1.0f);
-    CHECK(lib.GetMaterial("Silver")->pbr.roughness == Catch::Approx(0.1f));
-    CHECK(lib.GetMaterial("Rust")->pbr.albedo[0] == Catch::Approx(0.72f));
+    CHECK_THAT(lib.GetMaterial("Silver")->pbr.roughness, WithinAbs(0.1f, 0.001f));
+    CHECK_THAT(lib.GetMaterial("Rust")->pbr.albedo[0], WithinAbs(0.72f, 0.001f));
 }
 
 TEST_CASE("Integration: Config save and reload") {
@@ -843,7 +843,7 @@ TEST_CASE("Integration: Config save and reload") {
     REQUIRE(id != 0);
     auto* mat = lib.GetMaterial(id);
     CHECK(mat->name == "SaveReload");
-    CHECK(mat->pbr.metallic == Catch::Approx(0.42f));
+    CHECK_THAT(mat->pbr.metallic, WithinAbs(0.42f, 0.001f));
     CHECK(mat->doubleSided == true);
     std::filesystem::remove(path);
 }
