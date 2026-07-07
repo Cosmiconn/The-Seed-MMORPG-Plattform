@@ -201,9 +201,9 @@ void DeferredRenderer::EndGeometryPass() {
 void DeferredRenderer::SubmitMesh(const Mesh& mesh, const Material& material) {
     std::vector<Vertex> coloredVerts = mesh.vertices;
     for (auto& v : coloredVerts) {
-        v.r = material.albedoR;
-        v.g = material.albedoG;
-        v.b = material.albedoB;
+        v.r = material.gpuData.albedoR;
+        v.g = material.gpuData.albedoG;
+        v.b = material.gpuData.albedoB;
     }
 
     VkBufferCreateInfo bufInfo{};
