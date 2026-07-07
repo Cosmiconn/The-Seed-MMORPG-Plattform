@@ -92,6 +92,8 @@ target_sources(TheSeedCore
         src/core/profiler.cpp
         src/core/material.cpp
         src/core/deferred_renderer.cpp
+        src/core/material_config.cpp
+        src/core/shader_manager.cpp
     PUBLIC
         src/core/ecs.hpp
         src/core/net.hpp
@@ -105,6 +107,8 @@ target_sources(TheSeedCore
         src/core/profiler.hpp
         src/core/material.hpp
         src/core/deferred_renderer.hpp
+        src/core/material_config.hpp
+        src/core/shader_manager.hpp
 )
 target_include_directories(TheSeedCore PUBLIC
     $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}/src>
@@ -167,6 +171,7 @@ add_executable(TheSeedTests
     tests/test_integration.cpp
     tests/test_profiler.cpp
     tests/test_materials.cpp
+    tests/test_material_system.cpp
 )
 # FIX: Link against dynamic CRT to match vcpkg-built Catch2
 # Also add /NODEFAULTLIB to avoid libcmt.lib conflicts if any remain
