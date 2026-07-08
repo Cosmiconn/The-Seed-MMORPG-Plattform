@@ -40,7 +40,7 @@ bool TextureCache::Insert(std::shared_ptr<Texture> tex) {
     auto it = m_entries.find(tex->id);
     if (it != m_entries.end()) {
         m_lru.erase(it->second.lruIter);
-        m_usedBytes -= CalculateTextureSize(*it->second.texture);
+        m_usedBytes -= CalcTexSize(*it->second.texture);
         m_entries.erase(it);
     }
 
@@ -78,7 +78,7 @@ size_t TextureCache::EvictInternal(size_t requiredBytes) {
         m_lru.pop_back();
         auto it = m_entries.find(id);
         if (it != m_entries.end()) {
-            size_t freed = CalculateTextureSize(*it->second.texture);
+            size_t freed = CalcTexSize(*it->second.texture);
             it->second.texture->resident = false;
             it->second.texture->mips.clear();  // Free CPU pixel data
             it->second.texture->mips.shrink_to_fit();
@@ -108,7 +108,7 @@ bool TextureCache::Remove(uint32_t textureId) {
     std::lock_guard<std::mutex> lock(m_mutex);
     auto it = m_entries.find(textureId);
     if (it == m_entries.end()) return false;
-    m_usedBytes -= CalculateTextureSize(*it->second.texture);
+    m_usedBytes -= CalcTexSize(*it->second.texture);
     m_lru.erase(it->second.lruIter);
     m_entries.erase(it);
     return true;
@@ -137,9 +137,6 @@ static size_t CalcTexSize(const Texture& tex) {
     return s;
 }
 
-size_t TextureCache::CalculateTextureSize(const Texture& tex) const {
-    return CalcTexSize(tex);
-}
 
 // ============================================================================
 // TextureStreamer – Async loading + virtual texturing
@@ -609,9 +606,6 @@ bool TextureStreamer::LoadTextureFile(const std::filesystem::path& path, Texture
     return true;
 }
 
-size_t TextureStreamer::CalculateTextureSize(const Texture& tex) const {
-    return CalcTexSize(tex);
-}
 
 void TextureStreamer::UpdateMetrics() {
     // Called periodically

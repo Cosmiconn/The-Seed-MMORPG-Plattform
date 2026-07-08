@@ -254,7 +254,6 @@ private:
     void WorkerLoop();
     std::filesystem::path ResolvePath(const std::filesystem::path& path) const;
     bool LoadTextureFile(const std::filesystem::path& path, Texture& outTex, uint32_t maxMipCount);
-    size_t CalculateTextureSize(const Texture& tex) const;
     void UpdateMetrics();
 };
 
