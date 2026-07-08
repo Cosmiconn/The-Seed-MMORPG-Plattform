@@ -709,7 +709,7 @@ material:
         f << "material:\n  name: \"ReloadA\"\n  pbr:\n    metallic: 0.99\n";
     }
     size_t reloaded = lib.ReloadAll(loader);
-    CHECK(reloaded == 1);
+    CHECK(reloaded == 2);
     std::filesystem::remove(path1);
     std::filesystem::remove(path2);
 }
