@@ -8,6 +8,12 @@
 
 namespace TheSeed::Render {
 
+static size_t CalcTexSize(const Texture& tex) {
+    size_t s = 0;
+    for (const auto& mip : tex.mips) s += mip.dataSize;
+    return s;
+}
+
 // ============================================================================
 // TextureCache – LRU eviction
 // ============================================================================
@@ -131,11 +137,6 @@ size_t TextureCache::GetResidentCount() const {
 }
 
 // Helper to calculate size (used in Insert too, but defined outside class scope)
-static size_t CalcTexSize(const Texture& tex) {
-    size_t s = 0;
-    for (const auto& mip : tex.mips) s += mip.dataSize;
-    return s;
-}
 
 
 // ============================================================================

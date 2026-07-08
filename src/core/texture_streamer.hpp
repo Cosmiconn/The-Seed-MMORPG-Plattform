@@ -140,6 +140,7 @@ public:
     size_t GetResidentCount() const;
 
 private:
+    size_t EvictInternal(size_t requiredBytes);
     struct CacheEntry {
         std::shared_ptr<Texture> texture;
         std::list<uint32_t>::iterator lruIter;
