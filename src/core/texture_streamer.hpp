@@ -125,7 +125,7 @@ public:
     size_t Evict(size_t requiredBytes);
 
     // Get texture if resident
-    std::shared_ptr<Texture> Get(uint32_t textureId) const;
+    std::shared_ptr<Texture> Get(uint32_t textureId);
 
     // Remove specific texture
     bool Remove(uint32_t textureId);
@@ -143,7 +143,7 @@ private:
     size_t EvictInternal(size_t requiredBytes);
     struct CacheEntry {
         std::shared_ptr<Texture> texture;
-        std::list<uint32_t>::iterator lruIter;
+        mutable std::list<uint32_t>::iterator lruIter;
     };
 
     mutable std::mutex m_mutex;
