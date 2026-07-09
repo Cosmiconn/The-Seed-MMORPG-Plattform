@@ -291,6 +291,11 @@ bool TextureStreamer::ForceLoad(TextureHandle handle) {
         while (tex->isLoading) {
             std::this_thread::sleep_for(std::chrono::milliseconds(1));
         }
+        // Worker finished loading but may not have inserted into cache yet
+        // (worker adds to completed list, Update() inserts into cache)
+        if (!tex->resident && !tex->mips.empty()) {
+            m_cache->Insert(tex);
+        }
         return tex->resident;
     }
 
