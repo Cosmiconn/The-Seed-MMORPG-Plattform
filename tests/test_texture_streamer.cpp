@@ -253,14 +253,14 @@ TEST_CASE("TextureStreamer: Preload batch") {
 
     streamer.PreloadTextures(paths);
 
+    bool allResident = false;
     for (int frame = 0; frame < 100; ++frame) {
         streamer.Update(0.016f);
-        bool allResident = true;
-        // Check all handles in registry... we don't have them directly, but metrics tell us
         auto metrics = streamer.GetMetrics();
-        if (metrics.residentTextures == 10) break;
+        if (metrics.residentTextures == 10) { allResident = true; break; }
         std::this_thread::sleep_for(std::chrono::milliseconds(10));
     }
+    CHECK(allResident);
 
     auto metrics = streamer.GetMetrics();
     CHECK(metrics.totalTextures >= 10);
