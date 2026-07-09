@@ -23,7 +23,7 @@ static std::filesystem::path CreateRawTexture(const std::string& name, uint32_t 
         uint32_t format;
         uint32_t mipCount;
     };
-    RawHeader header{width, height, static_cast<uint32_t>(format), mipCount};
+    RawHeader header{0x54545257, 1, width, height, static_cast<uint32_t>(format), mipCount};
     file.write(reinterpret_cast<const char*>(&header), sizeof(header));
 
     uint32_t channels = 4;

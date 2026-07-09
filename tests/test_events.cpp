@@ -28,7 +28,7 @@ TEST_CASE("Events: Async Publish", "[events]") {
     EventBus bus;
     bool received = false;
 
-    bus.Subscribe(EventType::ChatMessage, [&](const GameEvent& evt) {
+    bus.Subscribe(EventType::ChatMessage, [&](const GameEvent& /*evt*/) {
         received = true;
     });
 
