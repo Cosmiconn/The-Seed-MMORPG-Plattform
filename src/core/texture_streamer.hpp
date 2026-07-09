@@ -68,7 +68,7 @@ struct Texture {
     bool resident = false;        // true when fully loaded to GPU
     float priority = 1.0f;        // streaming priority (0..1)
     std::vector<MipLevel> mips;   // mip 0 = full resolution
-    std::atomic<uint32_t> refCount{0};
+    // refCount removed - using shared_ptr reference counting instead
 };
 
 // Handle returned to users (material system, renderer)

@@ -31,16 +31,21 @@ bool TextureCache::Insert(std::shared_ptr<Texture> tex) {
 
     std::lock_guard<std::mutex> lock(m_mutex);
 
-    // Evict if necessary
-    if (m_usedBytes + texSize > m_budgetBytes) {
-        size_t toFree = (m_usedBytes + texSize) - m_budgetBytes;
-        EvictInternal(toFree);
+    // FIX: If single texture is larger than budget, evict everything and allow it
+    if (texSize > m_budgetBytes) {
+        EvictInternal(m_usedBytes);  // Evict all existing textures
+    } else {
+        // Normal case: evict just enough to fit
+        if (m_usedBytes + texSize > m_budgetBytes) {
+            size_t toFree = (m_usedBytes + texSize) - m_budgetBytes;
+            EvictInternal(toFree);
+        }
     }
 
-    // Still no budget?
-    if (m_usedBytes + texSize > m_budgetBytes) {
+    // After eviction, if still no room (shouldn't happen with fix above, but safety check)
+    if (m_usedBytes + texSize > m_budgetBytes && texSize <= m_budgetBytes) {
         spdlog::warn("TextureCache: cannot insert '{}', budget exhausted ({}/{} MB)",
-                     tex->name, m_usedBytes / (1024*1024), m_budgetBytes / (1024*1024));
+                     tex->name, m_usedBytes / (1024.0*1024.0), m_budgetBytes / (1024.0*1024.0));
         return false;
     }
 
@@ -214,7 +219,7 @@ TextureHandle TextureStreamer::RequestTextureLOD(const std::filesystem::path& pa
     tex->type = type;
     tex->priority = priority;
     tex->isStreaming = true;
-    tex->refCount = 1;
+    // refCount removed - using shared_ptr reference counting
 
     {
         std::lock_guard<std::mutex> lock(m_registryMutex);
@@ -291,13 +296,11 @@ bool TextureStreamer::ForceLoad(TextureHandle handle) {
         m_cache->Insert(tex);
         {
             std::lock_guard<std::mutex> lock(m_metricsMutex);
-            if (m_metrics.loadCount == 0) {
-                m_metrics.avgLoadTimeMs = ms;
-            } else {
-                m_metrics.avgLoadTimeMs = (m_metrics.avgLoadTimeMs * m_metrics.loadCount + ms) / (m_metrics.loadCount + 1);
-            }
+            // FIX: Properly update average load time
+            m_metrics.avgLoadTimeMs = (m_metrics.avgLoadTimeMs * m_metrics.loadCount + ms) / (m_metrics.loadCount + 1);
             m_metrics.loadCount++;
             m_metrics.residentBytes = m_cache->GetUsedBytes();
+            m_metrics.residentTextures = m_cache->GetResidentCount();
             m_metrics.peakBytes = std::max(m_metrics.peakBytes, m_metrics.residentBytes);
         }
         spdlog::info("TextureStreamer: force-loaded '{}' in {:.2f} ms", tex->name, ms);
@@ -328,19 +331,23 @@ void TextureStreamer::Update([[maybe_unused]] float deltaTime) {
 
         if (!tex->mips.empty()) {
             m_cache->Insert(tex);
-            {
-                std::lock_guard<std::mutex> lock(m_metricsMutex);
-                m_metrics.residentBytes = m_cache->GetUsedBytes();
-                m_metrics.peakBytes = std::max(m_metrics.peakBytes, m_metrics.residentBytes);
-            }
         }
         tex->isStreaming = false;
     }
 
+    // FIX: Always keep metrics in sync with actual cache state
     {
         std::lock_guard<std::mutex> lock(m_metricsMutex);
         m_metrics.requestsPending = m_inQueue.size();
         m_metrics.residentTextures = m_cache->GetResidentCount();
+        m_metrics.residentBytes = m_cache->GetUsedBytes();
+        m_metrics.streamingTextures = 0;
+
+        for (const auto& [id, tex] : m_registry) {
+            if (tex->isStreaming && !tex->resident) {
+                m_metrics.streamingTextures++;
+            }
+        }
     }
 }
 
@@ -353,27 +360,23 @@ void TextureStreamer::PreloadTextures(const std::vector<std::filesystem::path>& 
 void TextureStreamer::Release(TextureHandle handle) {
     if (handle.id == 0) return;
 
-    std::shared_ptr<Texture> tex;
+    // FIX: Remove from cache and registry directly, no broken manual refCount
+    m_cache->Remove(handle.id);
+
     {
         std::lock_guard<std::mutex> lock(m_registryMutex);
         auto it = m_registry.find(handle.id);
         if (it == m_registry.end()) return;
-        tex = it->second;
+        m_registry.erase(it);
     }
 
-    uint32_t refs = --tex->refCount;
-    if (refs == 0) {
-        m_cache->Remove(handle.id);
-        {
-            std::lock_guard<std::mutex> lock(m_registryMutex);
-            m_registry.erase(handle.id);
-        }
-        {
-            std::lock_guard<std::mutex> lock(m_metricsMutex);
-            m_metrics.evictedTextures++;
-        }
-        spdlog::debug("TextureStreamer: released texture ID={}", handle.id);
+    {
+        std::lock_guard<std::mutex> lock(m_metricsMutex);
+        m_metrics.evictedTextures++;
+        if (m_metrics.totalTextures > 0) m_metrics.totalTextures--;
     }
+
+    spdlog::debug("TextureStreamer: released texture ID={}", handle.id);
 }
 
 StreamingMetrics TextureStreamer::GetMetrics() const {
