@@ -31,25 +31,24 @@ bool TextureCache::Insert(std::shared_ptr<Texture> tex) {
 
     std::lock_guard<std::mutex> lock(m_mutex);
 
-    // FIX: If single texture is larger than budget, evict everything and allow it
-    if (texSize > m_budgetBytes) {
-        EvictInternal(m_usedBytes);  // Evict all existing textures
-    } else {
-        // Normal case: evict just enough to fit
-        if (m_usedBytes + texSize > m_budgetBytes) {
-            size_t toFree = (m_usedBytes + texSize) - m_budgetBytes;
-            EvictInternal(toFree);
+    // FIX: Evict LRU textures until we have enough budget.
+    // If texSize > budget, evict everything (single-item override).
+    while (m_usedBytes + texSize > m_budgetBytes && !m_lru.empty()) {
+        uint32_t id = m_lru.back();
+        m_lru.pop_back();
+        auto it = m_entries.find(id);
+        if (it != m_entries.end()) {
+            size_t freed = CalcTexSize(*it->second.texture);
+            it->second.texture->resident = false;
+            it->second.texture->mips.clear();
+            it->second.texture->mips.shrink_to_fit();
+            m_usedBytes -= freed;
+            m_entries.erase(it);
+            spdlog::debug("TextureCache: evicted ID={} (freed {} bytes)", id, freed);
         }
     }
 
-    // After eviction, if still no room (shouldn't happen with fix above, but safety check)
-    if (m_usedBytes + texSize > m_budgetBytes && texSize <= m_budgetBytes) {
-        spdlog::warn("TextureCache: cannot insert '{}', budget exhausted ({}/{} MB)",
-                     tex->name, m_usedBytes / (1024.0*1024.0), m_budgetBytes / (1024.0*1024.0));
-        return false;
-    }
-
-    // Remove old entry if exists
+    // Remove old entry if exists (refresh / update)
     auto it = m_entries.find(tex->id);
     if (it != m_entries.end()) {
         m_lru.erase(it->second.lruIter);
@@ -64,9 +63,9 @@ bool TextureCache::Insert(std::shared_ptr<Texture> tex) {
     m_usedBytes += texSize;
 
     tex->resident = true;
-    spdlog::debug("TextureCache: inserted '{}' ({}x{}, {} mips, {} MB, total {} MB)",
+    spdlog::debug("TextureCache: inserted '{}' ({}x{}, {} mips, {} bytes, total {} bytes)",
                   tex->name, tex->width, tex->height, tex->mipCount,
-                  texSize / (1024.0*1024.0), m_usedBytes / (1024.0*1024.0));
+                  texSize, m_usedBytes);
     return true;
 }
 
@@ -286,9 +285,19 @@ bool TextureStreamer::ForceLoad(TextureHandle handle) {
 
     if (tex->resident) return true;
 
-    // Blocking load
+    // FIX: If worker is currently loading this texture, wait for it
+    if (tex->isLoading.exchange(true)) {
+        // Another thread is loading; wait for completion
+        while (tex->isLoading) {
+            std::this_thread::sleep_for(std::chrono::milliseconds(1));
+        }
+        return tex->resident;
+    }
+
+    // We own the load now
     auto t0 = std::chrono::steady_clock::now();
     bool ok = LoadTextureFile(tex->sourcePath, *tex, 0);
+    tex->isLoading = false;
     auto t1 = std::chrono::steady_clock::now();
     double ms = std::chrono::duration<double, std::milli>(t1 - t0).count();
 
@@ -296,7 +305,6 @@ bool TextureStreamer::ForceLoad(TextureHandle handle) {
         m_cache->Insert(tex);
         {
             std::lock_guard<std::mutex> lock(m_metricsMutex);
-            // FIX: Properly update average load time
             m_metrics.avgLoadTimeMs = (m_metrics.avgLoadTimeMs * m_metrics.loadCount + ms) / (m_metrics.loadCount + 1);
             m_metrics.loadCount++;
             m_metrics.residentBytes = m_cache->GetUsedBytes();
@@ -456,8 +464,14 @@ void TextureStreamer::WorkerLoop() {
             tex = it->second;
         }
 
+        // FIX: Skip if ForceLoad already handled this texture
+        if (tex->resident || tex->isLoading.exchange(true)) {
+            continue;  // Already resident or ForceLoad is handling it
+        }
+
         auto t0 = std::chrono::steady_clock::now();
         bool ok = LoadTextureFile(tex->sourcePath, *tex, 0);
+        tex->isLoading = false;
         auto t1 = std::chrono::steady_clock::now();
         double ms = std::chrono::duration<double, std::milli>(t1 - t0).count();
 
