@@ -8,6 +8,9 @@
 
 namespace TheSeed::Render {
 
+// ============================================================================
+// Helper: Calculate texture size from mips
+// ============================================================================
 static size_t CalcTexSize(const Texture& tex) {
     size_t s = 0;
     for (const auto& mip : tex.mips) s += mip.dataSize;
@@ -24,8 +27,7 @@ TextureCache::TextureCache(size_t budgetBytes) : m_budgetBytes(budgetBytes) {
 bool TextureCache::Insert(std::shared_ptr<Texture> tex) {
     if (!tex || tex->mips.empty()) return false;
 
-    size_t texSize = 0;
-    for (const auto& mip : tex->mips) texSize += mip.dataSize;
+    size_t texSize = CalcTexSize(*tex);
 
     std::lock_guard<std::mutex> lock(m_mutex);
 
@@ -136,9 +138,6 @@ size_t TextureCache::GetResidentCount() const {
     return m_entries.size();
 }
 
-// Helper to calculate size (used in Insert too, but defined outside class scope)
-
-
 // ============================================================================
 // TextureStreamer – Async loading + virtual texturing
 // ============================================================================
@@ -199,6 +198,7 @@ TextureHandle TextureStreamer::RequestTextureLOD(const std::filesystem::path& pa
                                                   TextureFormat format,
                                                   TextureType type,
                                                   float priority) {
+    (void)maxMipCount;  // reserved for future LOD implementation
     auto resolved = ResolvePath(path);
     if (resolved.empty()) {
         spdlog::warn("TextureStreamer: empty path requested");
@@ -291,7 +291,11 @@ bool TextureStreamer::ForceLoad(TextureHandle handle) {
         m_cache->Insert(tex);
         {
             std::lock_guard<std::mutex> lock(m_metricsMutex);
-            m_metrics.avgLoadTimeMs = (m_metrics.avgLoadTimeMs * m_metrics.loadCount + ms) / (m_metrics.loadCount + 1);
+            if (m_metrics.loadCount == 0) {
+                m_metrics.avgLoadTimeMs = ms;
+            } else {
+                m_metrics.avgLoadTimeMs = (m_metrics.avgLoadTimeMs * m_metrics.loadCount + ms) / (m_metrics.loadCount + 1);
+            }
             m_metrics.loadCount++;
             m_metrics.residentBytes = m_cache->GetUsedBytes();
             m_metrics.peakBytes = std::max(m_metrics.peakBytes, m_metrics.residentBytes);
@@ -305,7 +309,7 @@ bool TextureStreamer::ForceLoad(TextureHandle handle) {
     return ok;
 }
 
-void TextureStreamer::Update(float deltaTime) {
+void TextureStreamer::Update([[maybe_unused]] float deltaTime) {
     // Process completed loads
     std::vector<uint32_t> completed;
     {
@@ -457,7 +461,11 @@ void TextureStreamer::WorkerLoop() {
         if (ok) {
             {
                 std::lock_guard<std::mutex> lock(m_metricsMutex);
-                m_metrics.avgLoadTimeMs = (m_metrics.avgLoadTimeMs * m_metrics.loadCount + ms) / (m_metrics.loadCount + 1);
+                if (m_metrics.loadCount == 0) {
+                    m_metrics.avgLoadTimeMs = ms;
+                } else {
+                    m_metrics.avgLoadTimeMs = (m_metrics.avgLoadTimeMs * m_metrics.loadCount + ms) / (m_metrics.loadCount + 1);
+                }
                 m_metrics.loadCount++;
             }
             spdlog::debug("TextureStreamer: async loaded '{}' ({}x{}, {} mips) in {:.2f} ms",
@@ -582,7 +590,8 @@ static void GenerateProceduralTexture(Texture& outTex, uint32_t width, uint32_t 
     }
 }
 
-bool TextureStreamer::LoadTextureFile(const std::filesystem::path& path, Texture& outTex, uint32_t maxMipCount) {
+bool TextureStreamer::LoadTextureFile(const std::filesystem::path& path, Texture& outTex, 
+                                        [[maybe_unused]] uint32_t maxMipCount) {
     // Try raw format first
     if (LoadRawTexture(path, outTex)) {
         return true;
@@ -606,7 +615,6 @@ bool TextureStreamer::LoadTextureFile(const std::filesystem::path& path, Texture
     GenerateProceduralTexture(outTex, width, height, outTex.format, outTex.type);
     return true;
 }
-
 
 void TextureStreamer::UpdateMetrics() {
     // Called periodically

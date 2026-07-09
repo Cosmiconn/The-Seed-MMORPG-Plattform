@@ -140,7 +140,6 @@ public:
     size_t GetResidentCount() const;
 
 private:
-    size_t EvictInternal(size_t requiredBytes);
     struct CacheEntry {
         std::shared_ptr<Texture> texture;
         mutable std::list<uint32_t>::iterator lruIter;
@@ -151,6 +150,8 @@ private:
     size_t m_usedBytes = 0;
     std::unordered_map<uint32_t, CacheEntry> m_entries;
     std::list<uint32_t> m_lru;  // front = most recently used
+
+    size_t EvictInternal(size_t requiredBytes);
 };
 
 // ============================================================================
@@ -196,7 +197,7 @@ public:
 
     // Update streaming (call once per frame)
     // Processes completed async loads, evictions, etc.
-    void Update(float deltaTime);
+    void Update([[maybe_unused]] float deltaTime);
 
     // Preload a set of textures (e.g. for upcoming zone)
     void PreloadTextures(const std::vector<std::filesystem::path>& paths);
@@ -254,7 +255,8 @@ private:
     // Internal
     void WorkerLoop();
     std::filesystem::path ResolvePath(const std::filesystem::path& path) const;
-    bool LoadTextureFile(const std::filesystem::path& path, Texture& outTex, uint32_t maxMipCount);
+    bool LoadTextureFile(const std::filesystem::path& path, Texture& outTex, 
+                         [[maybe_unused]] uint32_t maxMipCount);
     void UpdateMetrics();
 };
 
