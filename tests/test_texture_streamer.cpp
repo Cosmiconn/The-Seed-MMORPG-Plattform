@@ -183,9 +183,10 @@ TEST_CASE("TextureStreamer: Multiple concurrent requests") {
     }
 
     // Wait for all to become resident
+    bool allResident = false;
     for (int frame = 0; frame < 200; ++frame) {
         streamer.Update(0.016f);
-        bool allResident = true;
+        allResident = true;
         for (auto& h : handles) {
             if (!streamer.IsResident(h)) { allResident = false; break; }
         }
@@ -198,6 +199,7 @@ TEST_CASE("TextureStreamer: Multiple concurrent requests") {
         if (streamer.IsResident(h)) residentCount++;
     }
     CHECK(residentCount == 20);
+    CHECK(allResident);  // FIX: Use allResident to avoid C4189 warning
 
     auto metrics = streamer.GetMetrics();
     CHECK(metrics.totalTextures == 20);
@@ -424,39 +426,45 @@ TEST_CASE("TextureCache: basic insert and get") {
 }
 
 TEST_CASE("TextureCache: LRU eviction") {
-    TextureCache cache(1024);  // 1 KB budget
+    // FIX: Budget must fit tex1 (256) + tex4 (1024) = 1280 bytes minimum
+    TextureCache cache(1280);  // 1280 bytes budget
 
     auto tex1 = std::make_shared<Texture>();
     tex1->id = 1;
+    tex1->name = "tex1";
     tex1->mips.push_back(MipLevel{8, 8, 1, 8*8*4, std::vector<uint8_t>(8*8*4)});
 
     auto tex2 = std::make_shared<Texture>();
     tex2->id = 2;
+    tex2->name = "tex2";
     tex2->mips.push_back(MipLevel{8, 8, 1, 8*8*4, std::vector<uint8_t>(8*8*4)});
 
     auto tex3 = std::make_shared<Texture>();
     tex3->id = 3;
+    tex3->name = "tex3";
     tex3->mips.push_back(MipLevel{8, 8, 1, 8*8*4, std::vector<uint8_t>(8*8*4)});
 
-    // Insert all three (each 256 bytes, total 768 bytes < 1KB budget)
+    // Insert all three (each 256 bytes, total 768 bytes)
     CHECK(cache.Insert(tex1));
     CHECK(cache.Insert(tex2));
     CHECK(cache.Insert(tex3));
-    CHECK(cache.GetResidentCount() == 3);  // All fit in 1KB
+    CHECK(cache.GetResidentCount() == 3);
 
     // Touch tex1 to make it MRU
     cache.Touch(1);
 
-    // Now add a 4th texture that exceeds budget
+    // Now add a 4th texture (1024 bytes) that exceeds remaining budget
     auto tex4 = std::make_shared<Texture>();
     tex4->id = 4;
+    tex4->name = "tex4";
     tex4->mips.push_back(MipLevel{16, 16, 1, 16*16*4, std::vector<uint8_t>(16*16*4)});  // 1KB
-    CHECK(cache.Insert(tex4));  // Should evict LRU (tex2 or tex3)
+    CHECK(cache.Insert(tex4));  // Should evict LRU textures (tex2 and/or tex3)
 
-    // tex1 is MRU (touched), tex4 is newly inserted, so tex2 or tex3 got evicted
-    CHECK(cache.GetResidentCount() <= 4);  // Budget limits this
+    // tex1 is MRU (touched), tex4 is newly inserted
+    // tex2 and/or tex3 got evicted to make room
     CHECK(cache.Get(1) != nullptr);  // tex1 still there (MRU)
     CHECK(cache.Get(4) != nullptr);  // tex4 just inserted
+    CHECK(cache.GetResidentCount() >= 2);  // At least tex1 and tex4
 
     cache.Clear();
 }
