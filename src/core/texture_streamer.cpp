@@ -97,14 +97,14 @@ size_t TextureCache::EvictInternal(size_t requiredBytes) {
     return evicted;
 }
 
-std::shared_ptr<Texture> TextureCache::Get(uint32_t textureId) const {
+std::shared_ptr<Texture> TextureCache::Get(uint32_t textureId) {
     std::lock_guard<std::mutex> lock(m_mutex);
     auto it = m_entries.find(textureId);
     if (it != m_entries.end()) {
         // Promote to MRU on access
-        const_cast<TextureCache*>(this)->m_lru.erase(it->second.lruIter);
-        const_cast<TextureCache*>(this)->m_lru.push_front(textureId);
-        it->second.lruIter = const_cast<TextureCache*>(this)->m_lru.begin();
+        m_lru.erase(it->second.lruIter);
+        m_lru.push_front(textureId);
+        it->second.lruIter = m_lru.begin();
         return it->second.texture;
     }
     return nullptr;
